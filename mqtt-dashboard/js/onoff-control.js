@@ -18,26 +18,26 @@ const elems = {};
  * Initialize ON/OFF control module
  */
 export function initOnOffControl(sendCommand) {
-    sendCommandFn = sendCommand;
-    cacheElements();
-    generateUI();
-    setupEventListeners();
+  sendCommandFn = sendCommand;
+  cacheElements();
+  generateUI();
+  setupEventListeners();
 }
 
 /**
  * Cache DOM element references
  */
 function cacheElements() {
-    elems.container = document.getElementById('onoff-container');
+  elems.container = document.getElementById('onoff-container');
 }
 
 /**
  * Generate ON/OFF control UI
  */
 function generateUI() {
-    if (!elems.container) return;
+  if (!elems.container) return;
 
-    elems.container.innerHTML = `
+  elems.container.innerHTML = `
     <!-- Input Selection -->
     <div class="onoff-section">
       <div class="section-title">PROCESS INPUT</div>
@@ -149,19 +149,19 @@ function generateUI() {
     </div>
   `;
 
-    // Add visualizer styles
-    addVisualizerStyles();
+  // Add visualizer styles
+  addVisualizerStyles();
 }
 
 /**
  * Add additional CSS for visualizer
  */
 function addVisualizerStyles() {
-    if (document.getElementById('onoff-styles')) return;
+  if (document.getElementById('onoff-styles')) return;
 
-    const style = document.createElement('style');
-    style.id = 'onoff-styles';
-    style.textContent = `
+  const style = document.createElement('style');
+  style.id = 'onoff-styles';
+  style.textContent = `
     .onoff-visualizer {
       margin-top: 1rem;
     }
@@ -235,191 +235,202 @@ function addVisualizerStyles() {
       color: var(--danger);
     }
   `;
-    document.head.appendChild(style);
+  document.head.appendChild(style);
 }
 
 /**
  * Set up event listeners
  */
 function setupEventListeners() {
-    // ADC selector
-    document.querySelectorAll('#adc-selector .radio-item').forEach(item => {
-        item.addEventListener('click', () => {
-            document.querySelectorAll('#adc-selector .radio-item').forEach(i => i.classList.remove('active'));
-            item.classList.add('active');
-            item.querySelector('input').checked = true;
-            selectedAdc = parseInt(item.dataset.adc);
-        });
+  // ADC selector
+  document.querySelectorAll('#adc-selector .radio-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('#adc-selector .radio-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      item.querySelector('input').checked = true;
+      selectedAdc = parseInt(item.dataset.adc);
     });
+  });
 
-    // DAC selector
-    document.querySelectorAll('.dac-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.dac-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            selectedDac = btn.dataset.dac;
-        });
+  // DAC selector
+  document.querySelectorAll('.dac-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.dac-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedDac = btn.dataset.dac;
     });
+  });
 
-    // Setpoint/Hysteresis inputs
-    const spInput = document.getElementById('setpoint-input');
-    const hystInput = document.getElementById('hysteresis-input');
+  // Setpoint/Hysteresis inputs
+  const spInput = document.getElementById('setpoint-input');
+  const hystInput = document.getElementById('hysteresis-input');
 
-    [spInput, hystInput].forEach(input => {
-        input.addEventListener('input', updateThresholds);
-    });
+  [spInput, hystInput].forEach(input => {
+    input.addEventListener('input', updateThresholds);
+  });
 
-    // Auto mode toggle
-    const autoToggle = document.getElementById('auto-mode-toggle');
-    autoToggle.addEventListener('change', () => {
-        autoMode = autoToggle.checked;
-        if (autoMode) {
-            addLogEntry('Auto mode enabled');
-        } else {
-            addLogEntry('Auto mode disabled');
-        }
-    });
+  // Auto mode toggle
+  const autoToggle = document.getElementById('auto-mode-toggle');
+  autoToggle.addEventListener('change', () => {
+    autoMode = autoToggle.checked;
+    if (autoMode) {
+      addLogEntry('Auto mode enabled');
+    } else {
+      addLogEntry('Auto mode disabled');
+    }
+  });
 
-    // Apply button
-    const applyBtn = document.getElementById('btn-apply-onoff');
-    applyBtn.addEventListener('click', applyOutput);
+  // Apply button
+  const applyBtn = document.getElementById('btn-apply-onoff');
+  applyBtn.addEventListener('click', applyOutput);
 
-    // Initial threshold update
-    updateThresholds();
+  // Initial threshold update
+  updateThresholds();
 }
 
 /**
  * Update threshold display and markers
  */
 function updateThresholds() {
-    const sp = parseFloat(document.getElementById('setpoint-input').value) || 50;
-    const hyst = parseFloat(document.getElementById('hysteresis-input').value) || 5;
-    const halfH = hyst / 2;
+  const sp = parseFloat(document.getElementById('setpoint-input').value) || 50;
+  const hyst = parseFloat(document.getElementById('hysteresis-input').value) || 5;
+  const halfH = hyst / 2;
 
-    const high = Math.min(100, sp + halfH);
-    const low = Math.max(0, sp - halfH);
+  const high = Math.min(100, sp + halfH);
+  const low = Math.max(0, sp - halfH);
 
-    document.getElementById('threshold-sp').textContent = sp.toFixed(1) + '%';
-    document.getElementById('threshold-high').textContent = high.toFixed(1) + '%';
-    document.getElementById('threshold-low').textContent = low.toFixed(1) + '%';
+  document.getElementById('threshold-sp').textContent = sp.toFixed(1) + '%';
+  document.getElementById('threshold-high').textContent = high.toFixed(1) + '%';
+  document.getElementById('threshold-low').textContent = low.toFixed(1) + '%';
 
-    // Update markers
-    document.getElementById('sp-marker').style.left = sp + '%';
-    document.getElementById('high-marker').style.left = high + '%';
-    document.getElementById('low-marker').style.left = low + '%';
+  // Update markers
+  document.getElementById('sp-marker').style.left = sp + '%';
+  document.getElementById('high-marker').style.left = high + '%';
+  document.getElementById('low-marker').style.left = low + '%';
 
-    // Recalculate output
-    calculateOutput();
+  // Recalculate output
+  calculateOutput();
 }
 
 /**
  * Compute ON/OFF output based on hysteresis algorithm
  */
 function computeOnOff(pv, sp, hyst, prevOut) {
-    const halfH = hyst / 2;
-    if (pv >= sp + halfH) return 0;
-    if (pv <= sp - halfH) return 100;
-    return prevOut;
+  const halfH = hyst / 2;
+  if (pv >= sp + halfH) return 0;
+  if (pv <= sp - halfH) return 100;
+  return prevOut;
 }
 
 /**
  * Calculate and display output
  */
 function calculateOutput() {
-    const sp = parseFloat(document.getElementById('setpoint-input').value) || 50;
-    const hyst = parseFloat(document.getElementById('hysteresis-input').value) || 5;
+  const sp = parseFloat(document.getElementById('setpoint-input').value) || 50;
+  const hyst = parseFloat(document.getElementById('hysteresis-input').value) || 5;
 
-    const output = computeOnOff(lastPv, sp, hyst, previousOutput);
-    previousOutput = output;
+  const output = computeOnOff(lastPv, sp, hyst, previousOutput);
+  previousOutput = output;
 
-    const dacValue = Math.round((output / 100) * 4095);
+  const dacValue = Math.round((output / 100) * 4095);
 
-    document.getElementById('onoff-output').textContent = output;
-    document.getElementById('onoff-dac-value').textContent = dacValue;
+  document.getElementById('onoff-output').textContent = output;
+  document.getElementById('onoff-dac-value').textContent = dacValue;
 
-    return { output, dacValue };
+  return { output, dacValue };
 }
 
 /**
  * Apply output to selected DAC
  */
 function applyOutput() {
-    const { output, dacValue } = calculateOutput();
+  const { output, dacValue } = calculateOutput();
 
-    if (sendCommandFn) {
-        sendCommandFn(selectedDac, dacValue);
-        addLogEntry(`Applied ${selectedDac} = ${dacValue} (${output}%)`);
-    }
+  if (sendCommandFn) {
+    sendCommandFn(selectedDac, dacValue);
+    addLogEntry(`Applied ${selectedDac} = ${dacValue} (${output}%)`);
+  }
 }
 
 /**
  * Update ON/OFF control with new telemetry
  */
 export function updateOnOffControl(telemetry) {
-    if (!telemetry.adc || telemetry.adc.length <= selectedAdc) return;
+  if (!telemetry.adc || telemetry.adc.length <= selectedAdc) return;
 
-    const rawValue = telemetry.adc[selectedAdc];
-    const pvPercent = (rawValue / 4095) * 100;
-    lastPv = pvPercent;
+  // Add null checks for DOM elements (tab might not be rendered yet)
+  const pvElem = document.getElementById('onoff-pv');
+  const pvRawElem = document.getElementById('onoff-pv-raw');
+  const visualizerElem = document.getElementById('pv-visualizer');
+  const pointerElem = document.getElementById('pv-pointer');
 
-    // Update PV display
-    document.getElementById('onoff-pv').textContent = pvPercent.toFixed(1);
-    document.getElementById('onoff-pv-raw').textContent = rawValue;
+  if (!pvElem || !visualizerElem) {
+    // ON/OFF tab not active, skip update
+    return;
+  }
 
-    // Update visualizer
-    document.getElementById('pv-visualizer').style.width = pvPercent + '%';
-    document.getElementById('pv-pointer').style.left = pvPercent + '%';
+  const rawValue = telemetry.adc[selectedAdc];
+  const pvPercent = (rawValue / 4095) * 100;
+  lastPv = pvPercent;
 
-    // Calculate output
-    const { output, dacValue } = calculateOutput();
+  // Update PV display
+  pvElem.textContent = pvPercent.toFixed(1);
+  if (pvRawElem) pvRawElem.textContent = rawValue;
 
-    // Auto mode: automatically apply
-    if (autoMode) {
-        const sp = parseFloat(document.getElementById('setpoint-input').value) || 50;
-        const hyst = parseFloat(document.getElementById('hysteresis-input').value) || 5;
-        const newOutput = computeOnOff(pvPercent, sp, hyst, previousOutput);
+  // Update visualizer
+  visualizerElem.style.width = pvPercent + '%';
+  if (pointerElem) pointerElem.style.left = pvPercent + '%';
 
-        if (newOutput !== previousOutput) {
-            previousOutput = newOutput;
-            const newDacValue = Math.round((newOutput / 100) * 4095);
+  // Calculate output
+  const { output, dacValue } = calculateOutput();
 
-            if (sendCommandFn) {
-                sendCommandFn(selectedDac, newDacValue);
-                addLogEntry(`Auto: ${selectedDac} = ${newDacValue} (${newOutput}%)`, newOutput > 0);
-            }
-        }
+  // Auto mode: automatically apply
+  if (autoMode) {
+    const sp = parseFloat(document.getElementById('setpoint-input').value) || 50;
+    const hyst = parseFloat(document.getElementById('hysteresis-input').value) || 5;
+    const newOutput = computeOnOff(pvPercent, sp, hyst, previousOutput);
+
+    if (newOutput !== previousOutput) {
+      previousOutput = newOutput;
+      const newDacValue = Math.round((newOutput / 100) * 4095);
+
+      if (sendCommandFn) {
+        sendCommandFn(selectedDac, newDacValue);
+        addLogEntry(`Auto: ${selectedDac} = ${newDacValue} (${newOutput}%)`, newOutput > 0);
+      }
     }
+  }
 }
 
 /**
  * Add entry to control log
  */
 function addLogEntry(message, isOn = null) {
-    const log = document.getElementById('control-log');
-    if (!log) return;
+  const log = document.getElementById('control-log');
+  if (!log) return;
 
-    const entry = document.createElement('div');
-    entry.className = 'log-entry';
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
 
-    const time = new Date().toLocaleTimeString('en-US', {
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-    });
+  const time = new Date().toLocaleTimeString('en-US', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 
-    let outputClass = '';
-    if (isOn === true) outputClass = 'log-output-on';
-    else if (isOn === false) outputClass = 'log-output-off';
+  let outputClass = '';
+  if (isOn === true) outputClass = 'log-output-on';
+  else if (isOn === false) outputClass = 'log-output-off';
 
-    entry.innerHTML = `<span class="log-time">${time}</span><span class="${outputClass}">${message}</span>`;
+  entry.innerHTML = `<span class="log-time">${time}</span><span class="${outputClass}">${message}</span>`;
 
-    log.insertBefore(entry, log.firstChild);
+  log.insertBefore(entry, log.firstChild);
 
-    // Limit entries
-    while (log.children.length > 50) {
-        log.removeChild(log.lastChild);
-    }
+  // Limit entries
+  while (log.children.length > 50) {
+    log.removeChild(log.lastChild);
+  }
 }
 
 export { selectedAdc, selectedDac, autoMode };

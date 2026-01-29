@@ -181,7 +181,10 @@ function initializeSocket() {
     state.socket.on('status', handleStatus);
     state.socket.on('command_ack', handleCommandAck);
     state.socket.on('command_update', handleCommandUpdate);
-    state.socket.on('error', handleError);
+    state.socket.on('error', (error) => {
+        console.error('[DASHBOARD] Socket error:', error);
+        handleError(error);
+    });
 }
 
 /**
@@ -363,19 +366,27 @@ function updateTelemetryUI(telemetry) {
  * Send command to board via WebSocket
  */
 export function sendCommand(cmd, value, origin = 'web') {
+    console.log(`[DASHBOARD] sendCommand called: cmd=${cmd}, value=${value}, origin=${origin}`);
+    console.log(`[DASHBOARD] Connection state: socket=${!!state.socket}, connected=${state.connected}`);
+
     if (!state.socket || !state.connected) {
+        console.error('[DASHBOARD] Cannot send command: Not connected to server');
         showToast('Not connected to server', 'error');
         return;
     }
 
     const reqId = crypto.randomUUID();
-    state.socket.emit('command', {
+    const commandPayload = {
         boardId: state.boardId,
         cmd,
         value,
         origin,
         reqId,
-    });
+    };
+
+    console.log(`[DASHBOARD] Emitting command:`, commandPayload);
+    state.socket.emit('command', commandPayload);
+    console.log(`[DASHBOARD] Command emitted successfully`);
 }
 
 /**

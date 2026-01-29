@@ -139,14 +139,18 @@ export class SocketHandler {
      * Handle command request with rate limiting
      */
     async handleCommand(socket, { boardId, cmd, value, origin, reqId }) {
+        logger.info(`[COMMAND] Received from client ${socket.id}: boardId=${boardId}, cmd=${cmd}, value=${value}`);
+
         // Validate required fields
         if (!boardId || !cmd) {
+            logger.warn(`[COMMAND] Missing required fields: boardId=${boardId}, cmd=${cmd}`);
             socket.emit('error', { message: 'boardId and cmd are required' });
             return;
         }
 
         // Rate limiting
         if (!this.checkRateLimit(socket.id)) {
+            logger.warn(`[COMMAND] Rate limit exceeded for client ${socket.id}`);
             socket.emit('error', { message: 'Rate limit exceeded' });
             return;
         }
@@ -164,16 +168,21 @@ export class SocketHandler {
             ts: Date.now(),
         };
 
+        logger.debug(`[COMMAND] Built command payload:`, command);
+
         // Validate command
         const validationError = this.validateCommand(command);
         if (validationError) {
+            logger.warn(`[COMMAND] Validation failed: ${validationError}`);
             socket.emit('command_ack', { reqId: commandReqId, ok: false, error: validationError });
             return;
         }
 
         try {
             // Publish to MQTT
+            logger.info(`[COMMAND] Publishing to MQTT topic stm32/${boardId}/commands`);
             await this.mqttHandler.publishCommand(boardId, command);
+            logger.info(`[COMMAND] Successfully published to MQTT`);
 
             // Update state manager
             this.stateManager.updateLastCommand(boardId, command);
@@ -191,6 +200,7 @@ export class SocketHandler {
 
             // Acknowledge to sender
             socket.emit('command_ack', { reqId: commandReqId, ok: true, ts: command.ts });
+            logger.debug(`[COMMAND] ACK sent to client`);
 
             // Broadcast command update to all clients in the room
             this.io.to(boardId).emit('command_update', {
@@ -198,9 +208,9 @@ export class SocketHandler {
                 lastCmd: command,
             });
 
-            logger.info(`Command sent to ${boardId}:`, { cmd, value, origin: commandOrigin });
+            logger.info(`[COMMAND] ✓ Command sent to ${boardId}: ${cmd}=${value}`);
         } catch (err) {
-            logger.error('Failed to send command:', err);
+            logger.error(`[COMMAND] ✗ Failed to send command:`, err);
             socket.emit('command_ack', { reqId: commandReqId, ok: false, error: 'publish_failed' });
 
             logCommandAudit({

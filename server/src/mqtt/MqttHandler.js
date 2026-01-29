@@ -141,6 +141,7 @@ export class MqttHandler {
     publishCommand(boardId, command) {
         return new Promise((resolve, reject) => {
             if (!this.connected) {
+                logger.error('[MQTT] Cannot publish: MQTT not connected');
                 reject(new Error('MQTT not connected'));
                 return;
             }
@@ -148,12 +149,16 @@ export class MqttHandler {
             const topic = `${this.topicPrefix}/${boardId}/commands`;
             const payload = JSON.stringify(command);
 
+            logger.info(`[MQTT] Publishing to topic: ${topic}`);
+            logger.debug(`[MQTT] Payload: ${payload}`);
+
             this.client.publish(topic, payload, { qos: 1 }, (err) => {
                 if (err) {
-                    logger.error(`Failed to publish command to ${boardId}:`, err);
+                    logger.error(`[MQTT] ✗ Failed to publish command to ${boardId}:`, err);
                     reject(err);
                 } else {
-                    logger.debug(`Command published to ${boardId}:`, command);
+                    logger.info(`[MQTT] ✓ Command published to ${topic}`);
+                    logger.debug(`[MQTT] Command details:`, command);
                     resolve();
                 }
             });
