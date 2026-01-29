@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="STM32 Industrial Control Dashboard">
+  <title>STM32 Industrial Control Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:wght@400;600&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header" id="main-header">
+    <div class="header-left">
+      <div class="logo">
+        <div class="logo-icon"></div>
+        <div class="logo-text">
+          <span class="logo-title">INDUSTRIAL CONTROL</span>
+          <span class="logo-subtitle">STM32 MONITORING</span>
+        </div>
+      </div>
+    </div>
+    <div class="header-center">
+      <div class="status-display">
+        <div class="status-indicator" id="connection-status">
+          <div class="status-led"></div>
+          <span class="status-text">CONNECTING</span>
+        </div>
+        <div class="timestamp" id="timestamp">--:--:--</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="board-selector">
+        <label for="board-select">UNIT:</label>
+        <select id="board-select"><option value="stm32-01">STM32-01</option></select>
+      </div>
+      <div class="header-stats">
+        <div class="stat-item"><span class="stat-label">MSG/s</span><span class="stat-value" id="msg-rate">0</span></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <section class="panel-column left-column">
+      <div class="panel" id="adc-panel">
+        <div class="panel-header"><h2 class="panel-title">ANALOG INPUTS</h2><div class="panel-badge">ADC</div></div>
+        <div class="panel-content"><div class="adc-grid" id="adc-grid"></div></div>
+      </div>
+      <div class="panel" id="environment-panel">
+        <div class="panel-header"><h2 class="panel-title">ENVIRONMENT</h2></div>
+        <div class="panel-content">
+          <div class="env-grid">
+            <div class="env-item"><div class="env-label">TEMP</div><div class="env-value"><span id="temp-value">--.-</span><span class="env-unit">°C</span></div></div>
+            <div class="env-item"><div class="env-label">HUMID</div><div class="env-value"><span id="humid-value">--</span><span class="env-unit">%</span></div></div>
+            <div class="env-item"><div class="env-label">PRESS</div><div class="env-value"><span id="press-value">----</span><span class="env-unit">hPa</span></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel" id="stats-panel">
+        <div class="panel-header"><h2 class="panel-title">SYSTEM STATUS</h2></div>
+        <div class="panel-content">
+          <div class="stats-grid">
+            <div class="stat-row"><span class="stat-key">BOARD</span><span class="stat-val" id="stat-board-id">--</span></div>
+            <div class="stat-row"><span class="stat-key">FW</span><span class="stat-val" id="stat-firmware">--</span></div>
+            <div class="stat-row"><span class="stat-key">LATENCY</span><span class="stat-val" id="stat-latency">--</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel-column center-column">
+      <div class="tab-navigation" id="tab-navigation">
+        <button class="tab-button active" data-tab="daq-tab" id="tab-btn-daq">DAQ</button>
+        <button class="tab-button" data-tab="onoff-tab" id="tab-btn-onoff">ON/OFF CONTROL</button>
+      </div>
+      <div class="tab-content active" id="daq-tab">
+        <div class="panel chart-panel">
+          <div class="panel-header"><h2 class="panel-title">ADC WAVEFORMS</h2></div>
+          <div class="panel-content"><div class="charts-grid" id="charts-grid"></div></div>
+        </div>
+      </div>
+      <div class="tab-content" id="onoff-tab">
+        <div class="panel" id="onoff-panel">
+          <div class="panel-header"><h2 class="panel-title">ON/OFF CONTROL</h2></div>
+          <div class="panel-content"><div class="onoff-container" id="onoff-container"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel-column right-column">
+      <div class="panel" id="dac-panel">
+        <div class="panel-header"><h2 class="panel-title">ANALOG OUTPUTS</h2><div class="panel-badge">DAC</div></div>
+        <div class="panel-content"><div class="dac-controls" id="dac-controls"></div></div>
+      </div>
+      <div class="panel" id="actuator-panel">
+        <div class="panel-header"><h2 class="panel-title">ACTUATORS</h2></div>
+        <div class="panel-content"><div class="actuator-grid" id="actuator-grid"></div></div>
+      </div>
+      <div class="panel" id="latency-panel">
+        <div class="panel-header"><h2 class="panel-title">TELEMETRY RATE</h2></div>
+        <div class="panel-content">
+          <div class="latency-control">
+            <div class="latency-display"><span id="latency-display">1000</span><span class="latency-unit">ms</span></div>
+            <input type="range" class="latency-slider" id="latency-slider" min="100" max="5000" value="1000" step="100">
+            <button class="action-button" id="btn-apply-latency">APPLY</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast-container" id="toast-container"></div>
+  <script src="js/app.js" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+# Logs
+logs/
+*.log
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Build
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+
+# Docker
+mosquitto/data/
+mosquitto/log/
+
+# Redis
+dump.rdb
+
+# Certificates
+*.pem
+*.key
+*.crt
+nginx/certs/

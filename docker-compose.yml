@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # MQTT Broker
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: stm32-mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    restart: unless-stopped
+    networks:
+      - stm32-network
+
+  # Redis (optional, for horizontal scaling)
+  redis:
+    image: redis:7-alpine
+    container_name: stm32-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - stm32-network
+    profiles:
+      - with-redis
+
+  # Bridge Server
+  bridge:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: stm32-bridge
+    ports:
+      - "3000:3000"
+      - "502:502"
+    environment:
+      - NODE_ENV=production
+      - MQTT_URL=mqtt://mosquitto:1883
+      - PORT=3000
+      - MODBUS_PORT=502
+      - MODBUS_ENABLED=true
+      - USE_REDIS=false
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+      - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
+      - CORS_ORIGINS=http://localhost,http://localhost:3000,http://localhost:8080
+    depends_on:
+      - mosquitto
+    volumes:
+      - ./server/logs:/app/logs
+      - ./mqtt-dashboard:/app/mqtt-dashboard:ro
+    restart: unless-stopped
+    networks:
+      - stm32-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Nginx reverse proxy (production)
+  nginx:
+    image: nginx:alpine
+    container_name: stm32-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - ./mqtt-dashboard:/usr/share/nginx/html:ro
+    depends_on:
+      - bridge
+    restart: unless-stopped
+    networks:
+      - stm32-network
+    profiles:
+      - with-nginx
+
+networks:
+  stm32-network:
+    driver: bridge
+
+volumes:
+  redis-data:
