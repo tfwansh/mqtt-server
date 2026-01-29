@@ -78,7 +78,7 @@ function initAdcCharts() {
                     },
                     y: {
                         min: 0,
-                        max: 4095,
+                        max: 16383, // 14-bit ADC
                         grid: {
                             color: CHART_CONFIG.gridColor,
                             drawBorder: false,

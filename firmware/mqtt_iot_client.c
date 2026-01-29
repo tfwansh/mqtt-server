@@ -60,8 +60,19 @@ int mqtt_net_read(Network *n, unsigned char *buffer, int len, int timeout_ms) {
   return (r > 0) ? r : 0;
 }
 
+// EXPLANATION: sendbuf is a SCRATCHPAD used to construct a single packet.
+// It is CLEARED/REUSED for every new message. It does NOT accumulate history.
+// Increasing to 8KB prevents overflow of a SINGLE large packet (like JSON
+// state). It will NOT overflow after 10000 messages because it resets every
+// time.
+
 int mqtt_net_write(Network *n, unsigned char *buffer, int len, int timeout_ms) {
-  return net_send(g_sock, buffer, len, 0);
+  // CRITICAL: Use non-blocking write.
+  // If TCP buffer is full, return error immediately instead of hanging.
+  // This allows the main loop to continue (and potentially drop this packet)
+  // rather than stalling and causing a Watchdog Reset or connection timeout.
+  int rc = net_send(g_sock, buffer, len, NET_MSG_DONTWAIT);
+  return (rc >= 0) ? rc : -1;
 }
 
 void mqtt_net_disconnect(Network *n) {

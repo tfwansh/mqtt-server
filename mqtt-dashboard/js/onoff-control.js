@@ -10,6 +10,38 @@ let selectedAdc = 0;
 let selectedDac = 'DAC1';
 let autoMode = false;
 let lastPv = 0;
+let chart = null;
+const chartData = {
+  labels: [],
+  datasets: [
+    {
+      label: 'Setpoint',
+      data: [],
+      borderColor: '#c5a059',
+      borderDash: [5, 5],
+      borderWidth: 2,
+      pointRadius: 0,
+      fill: false
+    },
+    {
+      label: 'Process Value (ADC)',
+      data: [],
+      borderColor: '#3fcf8e',
+      borderWidth: 2,
+      pointRadius: 0,
+      fill: false
+    },
+    {
+      label: 'Output (DAC)',
+      data: [],
+      borderColor: '#3f8fcf',
+      borderWidth: 2,
+      pointRadius: 0,
+      fill: true,
+      backgroundColor: 'rgba(63, 143, 207, 0.2)'
+    }
+  ]
+};
 
 // DOM elements cache
 const elems = {};
@@ -55,7 +87,7 @@ function generateUI() {
           <span class="pv-value" id="onoff-pv">--.-</span>
           <span class="pv-unit">%</span>
         </div>
-        <div class="pv-raw">RAW: <span id="onoff-pv-raw">----</span> / 4095</div>
+        <div class="pv-raw">RAW: <span id="onoff-pv-raw">----</span> / 16383</div>
       </div>
     </div>
 
@@ -142,6 +174,22 @@ function generateUI() {
       </div>
     </div>
 
+    <!-- Time-Series Graph -->
+    <div class="onoff-section">
+      <div class="section-title">CONTROL HISTORY</div>
+      <div style="position: relative; height: 250px;">
+        <canvas id="onoff-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Time-Series Graph -->
+    <div class="onoff-section">
+      <div class="section-title">CONTROL HISTORY</div>
+      <div style="position: relative; height: 250px;">
+        <canvas id="onoff-chart"></canvas>
+      </div>
+    </div>
+
     <!-- Control Log -->
     <div class="onoff-section">
       <div class="section-title">CONTROL LOG</div>
@@ -151,6 +199,60 @@ function generateUI() {
 
   // Add visualizer styles
   addVisualizerStyles();
+
+  // Initialize chart
+  initChart();
+}
+
+/**
+ * Initialize Chart.js instance
+ */
+function initChart() {
+  const ctx = document.getElementById('onoff-chart').getContext('2d');
+
+  // Initial data buffer
+  for (let i = 0; i < 100; i++) {
+    chartData.labels.push('');
+    chartData.datasets[0].data.push(null);
+    chartData.datasets[1].data.push(null);
+    chartData.datasets[2].data.push(null);
+  }
+
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: chartData,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      scales: {
+        y: {
+          min: 0,
+          max: 100,
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)'
+          },
+          ticks: {
+            color: '#888'
+          }
+        },
+        x: {
+          display: false
+        }
+      },
+      plugins: {
+        legend: {
+          labels: {
+            color: '#ccc'
+          }
+        }
+      }
+    }
+  });
 }
 
 /**
@@ -332,7 +434,7 @@ function calculateOutput() {
   const output = computeOnOff(lastPv, sp, hyst, previousOutput);
   previousOutput = output;
 
-  const dacValue = Math.round((output / 100) * 4095);
+  const dacValue = Math.round((output / 100) * 16383);
 
   document.getElementById('onoff-output').textContent = output;
   document.getElementById('onoff-dac-value').textContent = dacValue;
@@ -370,7 +472,7 @@ export function updateOnOffControl(telemetry) {
   }
 
   const rawValue = telemetry.adc[selectedAdc];
-  const pvPercent = (rawValue / 4095) * 100;
+  const pvPercent = (rawValue / 16383) * 100;
   lastPv = pvPercent;
 
   // Update PV display
@@ -384,6 +486,26 @@ export function updateOnOffControl(telemetry) {
   // Calculate output
   const { output, dacValue } = calculateOutput();
 
+  // Update chart
+  if (chart) {
+    const sp = parseFloat(document.getElementById('setpoint-input').value) || 50;
+
+    // Shift data
+    chart.data.labels.shift();
+    chart.data.labels.push('');
+
+    chart.data.datasets[0].data.shift();
+    chart.data.datasets[0].data.push(sp);
+
+    chart.data.datasets[1].data.shift();
+    chart.data.datasets[1].data.push(pvPercent);
+
+    chart.data.datasets[2].data.shift();
+    chart.data.datasets[2].data.push(output);
+
+    chart.update('none'); // Efficient update
+  }
+
   // Auto mode: automatically apply
   if (autoMode) {
     const sp = parseFloat(document.getElementById('setpoint-input').value) || 50;
@@ -392,7 +514,7 @@ export function updateOnOffControl(telemetry) {
 
     if (newOutput !== previousOutput) {
       previousOutput = newOutput;
-      const newDacValue = Math.round((newOutput / 100) * 4095);
+      const newDacValue = Math.round((newOutput / 100) * 16383);
 
       if (sendCommandFn) {
         sendCommandFn(selectedDac, newDacValue);

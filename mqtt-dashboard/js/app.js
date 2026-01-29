@@ -71,8 +71,8 @@ function initializeUI() {
         <span class="dac-value-display" id="dac${i}-value">0</span>
       </div>
       <div class="dac-slider-container">
-        <input type="range" class="dac-slider" id="dac${i}-slider" min="0" max="4095" value="0">
-        <div class="dac-scale"><span>4095</span><span>2048</span><span>0</span></div>
+        <input type="range" class="dac-slider" id="dac${i}-slider" min="0" max="16383" value="0">
+        <div class="dac-scale"><span>16383</span><span>8192</span><span>0</span></div>
       </div>
       <div class="dac-voltage" id="dac${i}-voltage">0.00 V</div>
       <button class="dac-apply-btn" id="btn-apply-dac${i}">APPLY</button>
@@ -113,7 +113,7 @@ function setupEventListeners() {
         slider.addEventListener('input', () => {
             const value = parseInt(slider.value);
             valueDisplay.textContent = value;
-            voltageDisplay.textContent = ((value / 4095) * 3.3).toFixed(2) + ' V';
+            voltageDisplay.textContent = ((value / 16383) * 3.3).toFixed(2) + ' V';
         });
 
         applyBtn.addEventListener('click', () => {
@@ -304,7 +304,7 @@ function updateStateUI(stateData) {
             document.getElementById(`dac${i + 1}-slider`).value = value;
             document.getElementById(`dac${i + 1}-value`).textContent = value;
             document.getElementById(`dac${i + 1}-voltage`).textContent =
-                ((value / 4095) * 3.3).toFixed(2) + ' V';
+                ((value / 16383) * 3.3).toFixed(2) + ' V';
         });
     }
 
@@ -343,7 +343,7 @@ function updateTelemetryUI(telemetry) {
     // Update ADC values
     if (telemetry.adc) {
         telemetry.adc.forEach((value, i) => {
-            const percent = ((value / 4095) * 100).toFixed(1);
+            const percent = ((value / 16383) * 100).toFixed(1);
             document.getElementById(`adc-value-${i + 1}`).textContent = value;
             document.getElementById(`adc-bar-${i + 1}`).style.width = percent + '%';
             document.getElementById(`adc-percent-${i + 1}`).textContent = percent + '%';
@@ -363,6 +363,17 @@ function updateTelemetryUI(telemetry) {
 }
 
 /**
+ * Generate a simple UUID (works in non-HTTPS contexts)
+ */
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+/**
  * Send command to board via WebSocket
  */
 export function sendCommand(cmd, value, origin = 'web') {
@@ -375,7 +386,7 @@ export function sendCommand(cmd, value, origin = 'web') {
         return;
     }
 
-    const reqId = crypto.randomUUID();
+    const reqId = generateUUID(); // Use fallback instead of crypto.randomUUID for HTTP compatibility
     const commandPayload = {
         boardId: state.boardId,
         cmd,
